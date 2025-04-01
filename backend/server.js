@@ -170,18 +170,29 @@ app.post("/items", async (req, res) => {
   }
 });
 
-// Update an item
 app.put("/items/:id", async (req, res) => {
-  const { title, description, image_url, link_url } = req.body;
   const { id } = req.params;
+  const { title, description, image_url, link_url } = req.body;
+
   try {
-    const result = await db.query(
-      "UPDATE items SET title = $1, description = $2, image_url = $3, link_url = $4 WHERE id = $5 RETURNING *",
-      [title, description, image_url, link_url, id]
-    );
-    if (result.rows.length === 0) {
+    const existingItem = await db.query("SELECT * FROM items WHERE id = $1", [
+      id,
+    ]);
+    if (existingItem.rows.length === 0) {
       return res.status(404).json({ error: "Item not found" });
     }
+
+    // Use existing values if no new values are provided
+    const updatedTitle = title ?? existingItem.rows[0].title;
+    const updatedDescription = description ?? existingItem.rows[0].description;
+    const updatedImageUrl = image_url ?? existingItem.rows[0].image_url;
+    const updatedLinkUrl = link_url ?? existingItem.rows[0].link_url;
+
+    const result = await db.query(
+      "UPDATE items SET title = $1, description = $2, image_url = $3, link_url = $4 WHERE id = $5 RETURNING *",
+      [updatedTitle, updatedDescription, updatedImageUrl, updatedLinkUrl, id]
+    );
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error("Error updating item:", error);
@@ -189,7 +200,6 @@ app.put("/items/:id", async (req, res) => {
   }
 });
 
-// Delete an item
 app.delete("/items/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -205,14 +215,6 @@ app.delete("/items/:id", async (req, res) => {
     console.error("Error deleting item:", error);
     res.status(500).json({ error: "Failed to delete item" });
   }
-});
-
-app.get("/", (req, res) => {
-  res.status(200).json({ message: "Backend is running!" });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
 });
 
 app.get("/", (req, res) => {
