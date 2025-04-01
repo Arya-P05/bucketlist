@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -228,4 +229,48 @@ app.get("/", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  // Basic validation: Check if email and password are provided
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  try {
+    // Step 1: Check if the user exists in the database
+    const result = await db.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+
+    // If no user is found, return an error
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const user = result.rows[0]; // Get the user object
+
+    // Step 2: Compare the password from the request with the hashed password in the database
+    const match = await bcrypt.compare(password, user.password);
+
+    // If the password doesn't match, return an error
+    if (!match) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // Step 3: Generate a JWT token for the user
+    const token = jwt.sign(
+      { userId: user.id }, // Payload (we store the user id in the token)
+      process.env.JWT_SECRET, // Secret key (use environment variable to keep it secure)
+      { expiresIn: "1h" } // Token expiration time (optional, here it's 1 hour)
+    );
+
+    // Step 4: Send the token in the response
+    res.status(200).json({ message: "Login successful", token });
+  } catch (error) {
+    console.error("Error logging in user:", error);
+    res.status(500).json({ error: "Failed to log in" });
+  }
 });
