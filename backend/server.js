@@ -63,6 +63,25 @@ app.post("/bucket-lists", async (req, res) => {
   }
 });
 
+// Update a bucket list
+app.put("/bucket-lists/:id", async (req, res) => {
+  const { title, description } = req.body;
+  const { id } = req.params;
+  try {
+    const result = await db.query(
+      "UPDATE bucket_lists SET title = $1, description = $2 WHERE id = $3 RETURNING *",
+      [title, description, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Bucket list not found" });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating bucket list:", error);
+    res.status(500).json({ error: "Failed to update bucket list" });
+  }
+});
+
 app.post("/users", async (req, res) => {
   const { name, email, password } = req.body;
 
