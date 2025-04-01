@@ -72,6 +72,48 @@ app.post("/users", async (req, res) => {
   }
 });
 
+app.post("/items", async (req, res) => {
+  const { bucket_list_id, title, description, image_url, link_url } = req.body;
+
+  // Validate required fields
+  if (!bucket_list_id || !title) {
+    return res
+      .status(400)
+      .json({ error: "Bucket list ID and title are required" });
+  }
+
+  try {
+    // Check if bucket_list_id exists
+    const bucketListCheck = await db.query(
+      "SELECT id FROM bucket_lists WHERE id = $1",
+      [bucket_list_id]
+    );
+
+    if (bucketListCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Bucket list not found" });
+    }
+
+    // Insert new item
+    const result = await db.query(
+      `INSERT INTO items (bucket_list_id, title, description, image_url, link_url) 
+         VALUES ($1, $2, $3, $4, $5) 
+         RETURNING *`,
+      [
+        bucket_list_id,
+        title,
+        description || null,
+        image_url || null,
+        link_url || null,
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error creating item:", error);
+    res.status(500).json({ error: "Failed to create item" });
+  }
+});
+
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Backend is running!" });
 });
