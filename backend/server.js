@@ -12,9 +12,29 @@ const db = require("./db");
 
 app.get("/bucket-lists", async (req, res) => {
   try {
-    const result = await db.query(
-      "SELECT * FROM bucket_lists ORDER BY created_at DESC"
-    );
+    const result = await db.query(`
+        SELECT 
+          b.id AS bucket_list_id, 
+          b.user_id, 
+          b.title AS bucket_list_title, 
+          b.description AS bucket_list_description, 
+          b.created_at AS bucket_list_created_at, 
+          json_agg(
+            json_build_object(
+              'id', i.id, 
+              'title', i.title, 
+              'description', i.description, 
+              'image_url', i.image_url, 
+              'link_url', i.link_url, 
+              'created_at', i.created_at
+            )
+          ) AS items
+        FROM bucket_lists b
+        LEFT JOIN items i ON b.id = i.bucket_list_id
+        GROUP BY b.id
+        ORDER BY b.created_at DESC;
+      `);
+
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching bucket lists:", error);
