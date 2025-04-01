@@ -63,7 +63,6 @@ app.post("/bucket-lists", async (req, res) => {
   }
 });
 
-// Update a bucket list
 app.put("/bucket-lists/:id", async (req, res) => {
   const { title, description } = req.body;
   const { id } = req.params;
@@ -82,7 +81,6 @@ app.put("/bucket-lists/:id", async (req, res) => {
   }
 });
 
-// Delete a bucket list and its items
 app.delete("/bucket-lists/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -169,6 +167,25 @@ app.post("/items", async (req, res) => {
   } catch (error) {
     console.error("Error creating item:", error);
     res.status(500).json({ error: "Failed to create item" });
+  }
+});
+
+// Update an item
+app.put("/items/:id", async (req, res) => {
+  const { title, description, image_url, link_url } = req.body;
+  const { id } = req.params;
+  try {
+    const result = await db.query(
+      "UPDATE items SET title = $1, description = $2, image_url = $3, link_url = $4 WHERE id = $5 RETURNING *",
+      [title, description, image_url, link_url, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating item:", error);
+    res.status(500).json({ error: "Failed to update item" });
   }
 });
 
