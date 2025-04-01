@@ -1,6 +1,8 @@
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -109,19 +111,22 @@ app.post("/users", async (req, res) => {
       .json({ error: "Name, email, and password are required" });
   }
 
+  // Hash the password
   try {
+    const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
+
+    // Insert user into the database with hashed password
     const result = await db.query(
       "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email",
-      [name, email, password]
+      [name, email, hashedPassword]
     );
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(result.rows[0]); // Send back user info (exclude password)
   } catch (error) {
     console.error("Error creating user:", error);
 
     if (error.code === "23505") {
-      // Unique constraint violation (email already exists)
-      return res.status(409).json({ error: "Email already in use" });
+      return res.status(409).json({ error: "Email already in use" }); // Unique constraint violation (email already exists)
     }
 
     res.status(500).json({ error: "Failed to create user" });

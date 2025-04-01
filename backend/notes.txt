@@ -24,3 +24,5 @@ CREATE TABLE items (
     link_url VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+- We need to install bcrypt so that we can hash the users passwords before entering it into the database and also make sure to not return it in the response of the request
