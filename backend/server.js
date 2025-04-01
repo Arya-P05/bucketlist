@@ -154,6 +154,50 @@ app.get("/users/:id", async (req, res) => {
   }
 });
 
+app.put("/users/:id", async (req, res) => {
+  const userId = req.params.id;
+  const { name, email } = req.body;
+
+  if (!name && !email) {
+    return res
+      .status(400)
+      .json({ error: "At least one field (name or email) must be provided" });
+  }
+
+  try {
+    let query = "UPDATE users SET ";
+    const values = [];
+    let index = 1;
+
+    if (name) {
+      query += `name = $${index}, `;
+      values.push(name);
+      index++;
+    }
+
+    if (email) {
+      query += `email = $${index}, `;
+      values.push(email);
+      index++;
+    }
+
+    query = query.slice(0, -2); // Remove trailing comma
+    query += ` WHERE id = $${index} RETURNING id, name, email`;
+    values.push(userId);
+
+    const result = await db.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
 app.post("/items", async (req, res) => {
   const { bucket_list_id, title, description, image_url, link_url } = req.body;
 
