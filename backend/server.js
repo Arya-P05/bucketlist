@@ -134,6 +134,26 @@ app.post("/users", async (req, res) => {
   }
 });
 
+app.get("/users/:id", async (req, res) => {
+  const userId = req.params.id; // Get user ID from URL
+
+  try {
+    const result = await db.query(
+      "SELECT id, name, email FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(result.rows[0]); // Return user data (excluding password)
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
 app.post("/items", async (req, res) => {
   const { bucket_list_id, title, description, image_url, link_url } = req.body;
 
