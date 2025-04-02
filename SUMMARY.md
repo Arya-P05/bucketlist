@@ -2,7 +2,7 @@
 
 ## Overview
 
-We've built a full-stack bucket list application that allows users to:
+A full-stack bucket list application that allows users to:
 
 - Create an account and log in
 - Create and manage multiple bucket lists
@@ -87,25 +87,3 @@ Feel free to help implement these features if you'd like! I'd love to have multi
 - Direct image uploads
 - Email notifications
 - Mobile app version
-
-## Development Approach
-
-We followed a methodical approach to building this application:
-
-1. Set up the backend API with proper authentication
-2. Created the database schema and connection
-3. Implemented the frontend with Next.js and Tailwind
-4. Built reusable components and utilities
-5. Connected frontend to backend API
-6. Added form validation and error handling
-7. Implemented protected routes and authentication flow
-
-## Learning Outcomes
-
-- Building a full-stack application with modern technologies
-- Implementing secure authentication with JWT
-- Designing and building RESTful APIs
-- Managing state and side effects in React applications
-- Creating responsive UI with Tailwind CSS
-- Using TypeScript for type safety
-- Proper error handling and validation
