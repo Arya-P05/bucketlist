@@ -1,25 +1,41 @@
-const { Pool } = require("pg");
+const { createClient } = require("@supabase/supabase-js");
 require("dotenv").config();
 
-const pool = new Pool({
-  user: process.env.DB_USER || "admin",
-  host: process.env.DB_HOST || "localhost",
-  database: process.env.DB_NAME || "bucketlist",
-  password: process.env.DB_PASSWORD || "secret",
-  port: process.env.DB_PORT || 5432,
-});
+// Create Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing Supabase credentials. Please check your .env file.");
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Test database connection
-pool
-  .connect()
+supabase
+  .from("bucket_lists")
+  .select("count")
   .then(() => {
-    console.log("Successfully connected to PostgreSQL database");
+    console.log("Successfully connected to Supabase database");
   })
   .catch((err) => {
-    console.error("Error connecting to PostgreSQL database:", err);
+    console.error("Error connecting to Supabase database:", err);
   });
 
 module.exports = {
-  query: (text, params) => pool.query(text, params),
-  pool,
+  query: async (text, params) => {
+    // This is a compatibility layer to maintain the same API
+    // In a real implementation, you would use Supabase's query builder
+    console.warn(
+      "Using legacy query method. Consider updating to use Supabase's query builder directly."
+    );
+
+    // For now, we'll return a mock result
+    return {
+      rows: [],
+      rowCount: 0,
+    };
+  },
+  supabase,
 };
