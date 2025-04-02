@@ -158,6 +158,13 @@ export default function Dashboard() {
           </div>
         )} */}
 
+        {error && (
+          <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded mb-4">
+            Apologies, something went wrong. Please try again in a few minutes
+            or contact support. Thank you for understanding.
+          </div>
+        )}
+
         {showCreateForm && (
           <div className="bg-card-bg border border-card-border text-card-fg rounded-lg p-4 mb-6">
             <h2 className="text-xl font-semibold mb-4">
