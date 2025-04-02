@@ -203,7 +203,7 @@ app.delete("/users/:id", authenticateToken, async (req, res) => {
   const userId = parseInt(req.params.id, 10);
 
   // Ensure the user is deleting their own account
-  if (req.user.id !== userId) {
+  if (req.user.userId !== userId) {
     return res
       .status(403)
       .json({ error: "Unauthorized to delete this account" });
