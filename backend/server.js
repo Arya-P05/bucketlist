@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-const db = require("./db");
+const { supabase } = require("./db");
 
 // Public route - get all bucket lists (will be limited to user's lists after auth)
 app.get("/bucket-lists", authenticateToken, async (req, res) => {
@@ -20,34 +20,37 @@ app.get("/bucket-lists", authenticateToken, async (req, res) => {
     // Get the user ID from the authenticated token
     const userId = req.user.userId;
 
-    const result = await db.query(
-      `
-        SELECT 
-          b.id AS bucket_list_id, 
-          b.user_id, 
-          b.title AS bucket_list_title, 
-          b.description AS bucket_list_description, 
-          b.created_at AS bucket_list_created_at, 
-          json_agg(
-            json_build_object(
-              'id', i.id, 
-              'title', i.title, 
-              'description', i.description, 
-              'image_url', i.image_url, 
-              'link_url', i.link_url, 
-              'created_at', i.created_at
-            )
-          ) AS items
-        FROM bucket_lists b
-        LEFT JOIN items i ON b.id = i.bucket_list_id
-        WHERE b.user_id = $1
-        GROUP BY b.id
-        ORDER BY b.created_at DESC;
-      `,
-      [userId]
+    // Fetch bucket lists for the user
+    const { data: bucketLists, error: bucketListsError } = await supabase
+      .from("bucket_lists")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (bucketListsError) throw bucketListsError;
+
+    // For each bucket list, fetch its items
+    const bucketListsWithItems = await Promise.all(
+      bucketLists.map(async (list) => {
+        const { data: items, error: itemsError } = await supabase
+          .from("items")
+          .select("*")
+          .eq("bucket_list_id", list.id);
+
+        if (itemsError) throw itemsError;
+
+        return {
+          bucket_list_id: list.id,
+          user_id: list.user_id,
+          bucket_list_title: list.title,
+          bucket_list_description: list.description,
+          bucket_list_created_at: list.created_at,
+          items: items || [],
+        };
+      })
     );
 
-    res.json(result.rows);
+    res.json(bucketListsWithItems);
   } catch (error) {
     console.error("Error fetching bucket lists:", error);
     res.status(500).json({ error: "Failed to fetch bucket lists" });
@@ -64,19 +67,34 @@ app.post("/bucket-lists", authenticateToken, async (req, res) => {
   }
 
   // Ensure user can only create bucket lists for themselves
-  if (req.user.userId !== user_id) {
+  // Convert both to strings for comparison to handle type mismatches
+  if (String(req.user.userId) !== String(user_id)) {
+    console.log("User ID mismatch:", {
+      tokenUserId: req.user.userId,
+      requestUserId: user_id,
+      tokenUserIdType: typeof req.user.userId,
+      requestUserIdType: typeof user_id,
+    });
     return res.status(403).json({
       error: "Unauthorized: Cannot create bucket list for another user",
     });
   }
 
   try {
-    const result = await db.query(
-      "INSERT INTO bucket_lists (user_id, title, description) VALUES ($1, $2, $3) RETURNING *",
-      [user_id, title, description || null] // If no description, set it to null
-    );
+    const { data, error } = await supabase
+      .from("bucket_lists")
+      .insert([
+        {
+          user_id,
+          title,
+          description: description || null,
+        },
+      ])
+      .select();
 
-    res.status(201).json(result.rows[0]);
+    if (error) throw error;
+
+    res.status(201).json(data[0]);
   } catch (error) {
     console.error("Error creating bucket list:", error);
     res.status(500).json({ error: "Failed to create bucket list" });
@@ -90,28 +108,34 @@ app.put("/bucket-lists/:id", authenticateToken, async (req, res) => {
 
   try {
     // First check if bucket list belongs to the authenticated user
-    const bucketListCheck = await db.query(
-      "SELECT * FROM bucket_lists WHERE id = $1",
-      [id]
-    );
+    const { data: bucketList, error: bucketListError } = await supabase
+      .from("bucket_lists")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (bucketListCheck.rows.length === 0) {
+    if (bucketListError) throw bucketListError;
+
+    if (!bucketList) {
       return res.status(404).json({ error: "Bucket list not found" });
     }
 
     // Verify ownership
-    if (bucketListCheck.rows[0].user_id !== req.user.userId) {
+    if (bucketList.user_id !== req.user.userId) {
       return res.status(403).json({
         error: "Unauthorized: Cannot update another user's bucket list",
       });
     }
 
-    const result = await db.query(
-      "UPDATE bucket_lists SET title = $1, description = $2 WHERE id = $3 RETURNING *",
-      [title, description, id]
-    );
+    const { data, error } = await supabase
+      .from("bucket_lists")
+      .update({ title, description })
+      .eq("id", id)
+      .select();
 
-    res.json(result.rows[0]);
+    if (error) throw error;
+
+    res.json(data[0]);
   } catch (error) {
     console.error("Error updating bucket list:", error);
     res.status(500).json({ error: "Failed to update bucket list" });
@@ -124,30 +148,40 @@ app.delete("/bucket-lists/:id", authenticateToken, async (req, res) => {
 
   try {
     // First check if bucket list belongs to the authenticated user
-    const bucketListCheck = await db.query(
-      "SELECT * FROM bucket_lists WHERE id = $1",
-      [id]
-    );
+    const { data: bucketList, error: bucketListError } = await supabase
+      .from("bucket_lists")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (bucketListCheck.rows.length === 0) {
+    if (bucketListError) throw bucketListError;
+
+    if (!bucketList) {
       return res.status(404).json({ error: "Bucket list not found" });
     }
 
     // Verify ownership
-    if (bucketListCheck.rows[0].user_id !== req.user.userId) {
+    if (bucketList.user_id !== req.user.userId) {
       return res.status(403).json({
         error: "Unauthorized: Cannot delete another user's bucket list",
       });
     }
 
     // Delete the items first (due to foreign key constraint)
-    await db.query("DELETE FROM items WHERE bucket_list_id = $1", [id]);
+    const { error: itemsError } = await supabase
+      .from("items")
+      .delete()
+      .eq("bucket_list_id", id);
+
+    if (itemsError) throw itemsError;
 
     // Then delete the bucket list
-    const result = await db.query(
-      "DELETE FROM bucket_lists WHERE id = $1 RETURNING *",
-      [id]
-    );
+    const { error: deleteError } = await supabase
+      .from("bucket_lists")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) throw deleteError;
 
     res.json({ message: "Bucket list deleted" });
   } catch (error) {
@@ -171,21 +205,33 @@ app.post("/users", async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
 
+    console.log("Attempting to create user with email:", email);
+
     // Insert user into the database with hashed password
-    const result = await db.query(
-      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email",
-      [name, email, hashedPassword]
-    );
+    const { data, error } = await supabase
+      .from("users")
+      .insert([{ name, email, password: hashedPassword }])
+      .select("id, name, email");
 
-    res.status(201).json(result.rows[0]); // Send back user info (exclude password)
-  } catch (error) {
-    console.error("Error creating user:", error);
+    if (error) {
+      console.error("Supabase error details:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      console.error("Error details:", error.details);
 
-    if (error.code === "23505") {
-      return res.status(409).json({ error: "Email already in use" }); // Unique constraint violation (email already exists)
+      if (error.code === "23505") {
+        return res.status(409).json({ error: "Email already in use" });
+      }
+      throw error;
     }
 
-    res.status(500).json({ error: "Failed to create user" });
+    console.log("User created successfully:", data[0]);
+    res.status(201).json(data[0]); // Send back user info (exclude password)
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to create user", details: error.message });
   }
 });
 
@@ -201,16 +247,19 @@ app.get("/users/:id", authenticateToken, async (req, res) => {
   }
 
   try {
-    const result = await db.query(
-      "SELECT id, name, email FROM users WHERE id = $1",
-      [userId]
-    );
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, name, email")
+      .eq("id", userId)
+      .single();
 
-    if (result.rows.length === 0) {
+    if (error) throw error;
+
+    if (!data) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json(result.rows[0]); // Return user data (excluding password)
+    res.json(data); // Return user data (excluding password)
   } catch (error) {
     console.error("Error fetching user:", error);
     res.status(500).json({ error: "Failed to fetch user" });
@@ -237,33 +286,23 @@ app.put("/users/:id", authenticateToken, async (req, res) => {
   }
 
   try {
-    let query = "UPDATE users SET ";
-    const values = [];
-    let index = 1;
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
 
-    if (name) {
-      query += `name = $${index}, `;
-      values.push(name);
-      index++;
-    }
+    const { data, error } = await supabase
+      .from("users")
+      .update(updateData)
+      .eq("id", userId)
+      .select("id, name, email");
 
-    if (email) {
-      query += `email = $${index}, `;
-      values.push(email);
-      index++;
-    }
+    if (error) throw error;
 
-    query = query.slice(0, -2); // Remove trailing comma
-    query += ` WHERE id = $${index} RETURNING id, name, email`;
-    values.push(userId);
-
-    const result = await db.query(query, values);
-
-    if (result.rows.length === 0) {
+    if (!data || data.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json(result.rows[0]);
+    res.json(data[0]);
   } catch (error) {
     console.error("Error updating user:", error);
     res.status(500).json({ error: "Failed to update user" });
@@ -283,7 +322,9 @@ app.delete("/users/:id", authenticateToken, async (req, res) => {
 
   try {
     // Delete user (this will fail if there are related bucket lists unless cascading is enabled)
-    await db.query("DELETE FROM users WHERE id = $1", [userId]);
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+
+    if (error) throw error;
 
     res.status(200).json({ message: "User account deleted successfully" });
   } catch (error) {
@@ -305,37 +346,42 @@ app.post("/items", authenticateToken, async (req, res) => {
 
   try {
     // Check if bucket_list_id exists and belongs to the current user
-    const bucketListCheck = await db.query(
-      "SELECT * FROM bucket_lists WHERE id = $1",
-      [bucket_list_id]
-    );
+    const { data: bucketList, error: bucketListError } = await supabase
+      .from("bucket_lists")
+      .select("*")
+      .eq("id", bucket_list_id)
+      .single();
 
-    if (bucketListCheck.rows.length === 0) {
+    if (bucketListError) throw bucketListError;
+
+    if (!bucketList) {
       return res.status(404).json({ error: "Bucket list not found" });
     }
 
     // Verify ownership
-    if (bucketListCheck.rows[0].user_id !== req.user.userId) {
+    if (bucketList.user_id !== req.user.userId) {
       return res.status(403).json({
         error: "Unauthorized: Cannot add items to another user's bucket list",
       });
     }
 
     // Insert new item
-    const result = await db.query(
-      `INSERT INTO items (bucket_list_id, title, description, image_url, link_url) 
-         VALUES ($1, $2, $3, $4, $5) 
-         RETURNING *`,
-      [
-        bucket_list_id,
-        title,
-        description || null,
-        image_url || null,
-        link_url || null,
-      ]
-    );
+    const { data, error } = await supabase
+      .from("items")
+      .insert([
+        {
+          bucket_list_id,
+          title,
+          description: description || null,
+          image_url: image_url || null,
+          link_url: link_url || null,
+        },
+      ])
+      .select();
 
-    res.status(201).json(result.rows[0]);
+    if (error) throw error;
+
+    res.status(201).json(data[0]);
   } catch (error) {
     console.error("Error creating item:", error);
     res.status(500).json({ error: "Failed to create item" });
@@ -349,42 +395,43 @@ app.put("/items/:id", authenticateToken, async (req, res) => {
 
   try {
     // First fetch the item to check bucket list ownership
-    const itemCheck = await db.query(
-      `
-      SELECT i.*, b.user_id 
-      FROM items i
-      JOIN bucket_lists b ON i.bucket_list_id = b.id
-      WHERE i.id = $1
-    `,
-      [id]
-    );
+    const { data: item, error: itemError } = await supabase
+      .from("items")
+      .select("*, bucket_lists!inner(*)")
+      .eq("id", id)
+      .single();
 
-    if (itemCheck.rows.length === 0) {
+    if (itemError) throw itemError;
+
+    if (!item) {
       return res.status(404).json({ error: "Item not found" });
     }
 
     // Verify ownership through the bucket list
-    if (itemCheck.rows[0].user_id !== req.user.userId) {
+    if (item.bucket_lists.user_id !== req.user.userId) {
       return res.status(403).json({
         error:
           "Unauthorized: Cannot update items in another user's bucket list",
       });
     }
 
-    const existingItem = itemCheck.rows[0];
-
     // Use existing values if no new values are provided
-    const updatedTitle = title ?? existingItem.title;
-    const updatedDescription = description ?? existingItem.description;
-    const updatedImageUrl = image_url ?? existingItem.image_url;
-    const updatedLinkUrl = link_url ?? existingItem.link_url;
+    const updateData = {
+      title: title ?? item.title,
+      description: description ?? item.description,
+      image_url: image_url ?? item.image_url,
+      link_url: link_url ?? item.link_url,
+    };
 
-    const result = await db.query(
-      "UPDATE items SET title = $1, description = $2, image_url = $3, link_url = $4 WHERE id = $5 RETURNING *",
-      [updatedTitle, updatedDescription, updatedImageUrl, updatedLinkUrl, id]
-    );
+    const { data, error } = await supabase
+      .from("items")
+      .update(updateData)
+      .eq("id", id)
+      .select();
 
-    res.json(result.rows[0]);
+    if (error) throw error;
+
+    res.json(data[0]);
   } catch (error) {
     console.error("Error updating item:", error);
     res.status(500).json({ error: "Failed to update item" });
@@ -397,32 +444,29 @@ app.delete("/items/:id", authenticateToken, async (req, res) => {
 
   try {
     // First fetch the item to check bucket list ownership
-    const itemCheck = await db.query(
-      `
-      SELECT i.*, b.user_id 
-      FROM items i
-      JOIN bucket_lists b ON i.bucket_list_id = b.id
-      WHERE i.id = $1
-    `,
-      [id]
-    );
+    const { data: item, error: itemError } = await supabase
+      .from("items")
+      .select("*, bucket_lists!inner(*)")
+      .eq("id", id)
+      .single();
 
-    if (itemCheck.rows.length === 0) {
+    if (itemError) throw itemError;
+
+    if (!item) {
       return res.status(404).json({ error: "Item not found" });
     }
 
     // Verify ownership through the bucket list
-    if (itemCheck.rows[0].user_id !== req.user.userId) {
+    if (item.bucket_lists.user_id !== req.user.userId) {
       return res.status(403).json({
         error:
           "Unauthorized: Cannot delete items from another user's bucket list",
       });
     }
 
-    const result = await db.query(
-      "DELETE FROM items WHERE id = $1 RETURNING *",
-      [id]
-    );
+    const { error } = await supabase.from("items").delete().eq("id", id);
+
+    if (error) throw error;
 
     res.json({ message: "Item deleted" });
   } catch (error) {
@@ -447,16 +491,19 @@ app.post("/login", async (req, res) => {
 
   try {
     // Step 1: Check if the user exists in the database
-    const result = await db.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    const { data: users, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email);
+
+    if (userError) throw userError;
 
     // If no user is found, return an error
-    if (result.rows.length === 0) {
+    if (!users || users.length === 0) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const user = result.rows[0]; // Get the user object
+    const user = users[0]; // Get the user object
 
     // Step 2: Compare the password from the request with the hashed password in the database
     const match = await bcrypt.compare(password, user.password);
