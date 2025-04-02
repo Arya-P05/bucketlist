@@ -6,7 +6,7 @@ import Navbar from "../../components/Navbar";
 import { isLoggedIn, getToken } from "../../utils/auth";
 
 interface BucketListItem {
-  id: number;
+  id: string;
   title: string;
   description: string | null;
   image_url: string | null;
@@ -15,8 +15,8 @@ interface BucketListItem {
 }
 
 interface BucketList {
-  bucket_list_id: number;
-  user_id: number;
+  bucket_list_id: string;
+  user_id: string;
   bucket_list_title: string;
   bucket_list_description: string | null;
   bucket_list_created_at: string;
@@ -66,7 +66,7 @@ export default function BucketListDetail({
 
       // Find the specific bucket list by ID
       const list = data.find(
-        (list: BucketList) => list.bucket_list_id === parseInt(params.id)
+        (list: BucketList) => String(list.bucket_list_id) === params.id
       );
 
       if (!list) {
@@ -126,7 +126,7 @@ export default function BucketListDetail({
     }
   };
 
-  const handleDeleteItem = async (itemId: number) => {
+  const handleDeleteItem = async (itemId: string) => {
     if (!confirm("Are you sure you want to delete this item?")) {
       return;
     }
