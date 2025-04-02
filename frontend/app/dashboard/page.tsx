@@ -152,11 +152,11 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {error && (
+        {/* {error && (
           <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded mb-4">
             {error}
           </div>
-        )}
+        )} */}
 
         {showCreateForm && (
           <div className="bg-card-bg border border-card-border text-card-fg rounded-lg p-4 mb-6">
