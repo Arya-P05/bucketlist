@@ -9,6 +9,7 @@ A web application for creating, managing, and sharing bucket lists with friends.
 - Add items to your bucket lists with titles, descriptions, images, and links
 - Delete bucket lists and items
 - Beautiful and responsive UI built with Next.js and Tailwind CSS
+- Cloud database support with Supabase
 
 ## Technologies Used
 
@@ -23,7 +24,7 @@ A web application for creating, managing, and sharing bucket lists with friends.
 
 - Node.js
 - Express.js
-- PostgreSQL
+- Supabase (PostgreSQL in the cloud)
 - JWT for authentication
 
 ## Setup
@@ -31,9 +32,13 @@ A web application for creating, managing, and sharing bucket lists with friends.
 ### Prerequisites
 
 - Node.js (v14 or higher)
-- PostgreSQL (make sure the database server is running)
+- Supabase account (for cloud database)
 
 ### Database Setup
+
+You have two options for the database:
+
+#### Option 1: Local PostgreSQL (Development)
 
 1. Create a PostgreSQL database for the application
 2. Create the following tables:
@@ -66,6 +71,13 @@ CREATE TABLE items (
 );
 ```
 
+#### Option 2: Supabase (Production)
+
+1. Create a Supabase account at [supabase.com](https://supabase.com)
+2. Create a new project
+3. Run the SQL script in `backend/supabase-schema.sql` in the Supabase SQL Editor
+4. Note down your Supabase URL and API key
+
 ### Installation
 
 1. Clone the repository
@@ -80,6 +92,8 @@ npm run install:all
 
 Create a `.env` file in the backend directory with the following details:
 
+#### For Local PostgreSQL:
+
 ```
 PORT=3001
 DB_USER=your_postgres_username
@@ -88,6 +102,15 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=your_database_name
 JWT_SECRET=your_secret_key_for_jwt
+```
+
+#### For Supabase:
+
+```
+PORT=3001
+JWT_SECRET=your_secret_key_for_jwt
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_KEY=your_supabase_api_key
 ```
 
 4. Start the application in development mode:
@@ -107,3 +130,17 @@ This will start both the frontend and backend servers:
 2. Create a new bucket list from the dashboard
 3. Add items to your bucket list
 4. View, edit, or delete your bucket lists and items
+
+## Deployment
+
+### Frontend
+
+The frontend can be deployed to Vercel, Netlify, or any other static hosting service that supports Next.js.
+
+### Backend
+
+The backend can be deployed to Heroku, Railway, or any other Node.js hosting service.
+
+### Database
+
+For production, use the Supabase cloud database option. This provides a scalable, secure, and managed PostgreSQL database.
