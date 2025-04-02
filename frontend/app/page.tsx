@@ -31,7 +31,7 @@ export default function Home() {
             Create, share, and track your bucket list adventures!
           </p>
 
-          <div className="bg-secondary/30 p-4 inline-block rounded">
+          {/* <div className="bg-secondary/30 p-4 inline-block rounded">
             <span className="text-foreground/80">Backend Status: </span>
             <span
               className={
@@ -42,7 +42,7 @@ export default function Home() {
             >
               {backendStatus}
             </span>
-          </div>
+          </div> */}
         </section>
 
         <section className="grid md:grid-cols-3 gap-6 my-12">
