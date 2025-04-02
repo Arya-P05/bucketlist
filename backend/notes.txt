@@ -27,3 +27,8 @@ CREATE TABLE items (
 
 - We need to install bcrypt so that we can hash the users passwords before entering it into the database and also make sure to not return it in the response of the request
 - We need to install jsonwebtokens so that we can use it to authenticate future requests
+
+revist for backend:
+- Sharing permissions for bucket lists
+- Improved image handling for items
+- User relationship management (friends/connections)

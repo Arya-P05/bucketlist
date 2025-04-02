@@ -14,9 +14,14 @@ app.use(express.json());
 
 const db = require("./db");
 
-app.get("/bucket-lists", async (req, res) => {
+// Public route - get all bucket lists (will be limited to user's lists after auth)
+app.get("/bucket-lists", authenticateToken, async (req, res) => {
   try {
-    const result = await db.query(`
+    // Get the user ID from the authenticated token
+    const userId = req.user.userId;
+
+    const result = await db.query(
+      `
         SELECT 
           b.id AS bucket_list_id, 
           b.user_id, 
@@ -35,9 +40,12 @@ app.get("/bucket-lists", async (req, res) => {
           ) AS items
         FROM bucket_lists b
         LEFT JOIN items i ON b.id = i.bucket_list_id
+        WHERE b.user_id = $1
         GROUP BY b.id
         ORDER BY b.created_at DESC;
-      `);
+      `,
+      [userId]
+    );
 
     res.json(result.rows);
   } catch (error) {
@@ -46,12 +54,20 @@ app.get("/bucket-lists", async (req, res) => {
   }
 });
 
-app.post("/bucket-lists", async (req, res) => {
+// Create bucket list - protected route
+app.post("/bucket-lists", authenticateToken, async (req, res) => {
   const { user_id, title, description } = req.body;
 
   // Validate the request body
   if (!title || !user_id) {
     return res.status(400).json({ error: "Title and user_id are required" });
+  }
+
+  // Ensure user can only create bucket lists for themselves
+  if (req.user.userId !== user_id) {
+    return res.status(403).json({
+      error: "Unauthorized: Cannot create bucket list for another user",
+    });
   }
 
   try {
@@ -67,17 +83,34 @@ app.post("/bucket-lists", async (req, res) => {
   }
 });
 
-app.put("/bucket-lists/:id", async (req, res) => {
+// Update bucket list - protected route
+app.put("/bucket-lists/:id", authenticateToken, async (req, res) => {
   const { title, description } = req.body;
   const { id } = req.params;
+
   try {
+    // First check if bucket list belongs to the authenticated user
+    const bucketListCheck = await db.query(
+      "SELECT * FROM bucket_lists WHERE id = $1",
+      [id]
+    );
+
+    if (bucketListCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Bucket list not found" });
+    }
+
+    // Verify ownership
+    if (bucketListCheck.rows[0].user_id !== req.user.userId) {
+      return res.status(403).json({
+        error: "Unauthorized: Cannot update another user's bucket list",
+      });
+    }
+
     const result = await db.query(
       "UPDATE bucket_lists SET title = $1, description = $2 WHERE id = $3 RETURNING *",
       [title, description, id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Bucket list not found" });
-    }
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error("Error updating bucket list:", error);
@@ -85,17 +118,37 @@ app.put("/bucket-lists/:id", async (req, res) => {
   }
 });
 
-app.delete("/bucket-lists/:id", async (req, res) => {
+// Delete bucket list - protected route
+app.delete("/bucket-lists/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
+
   try {
+    // First check if bucket list belongs to the authenticated user
+    const bucketListCheck = await db.query(
+      "SELECT * FROM bucket_lists WHERE id = $1",
+      [id]
+    );
+
+    if (bucketListCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Bucket list not found" });
+    }
+
+    // Verify ownership
+    if (bucketListCheck.rows[0].user_id !== req.user.userId) {
+      return res.status(403).json({
+        error: "Unauthorized: Cannot delete another user's bucket list",
+      });
+    }
+
+    // Delete the items first (due to foreign key constraint)
     await db.query("DELETE FROM items WHERE bucket_list_id = $1", [id]);
+
+    // Then delete the bucket list
     const result = await db.query(
       "DELETE FROM bucket_lists WHERE id = $1 RETURNING *",
       [id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Bucket list not found" });
-    }
+
     res.json({ message: "Bucket list deleted" });
   } catch (error) {
     console.error("Error deleting bucket list:", error);
@@ -103,6 +156,7 @@ app.delete("/bucket-lists/:id", async (req, res) => {
   }
 });
 
+// Create user - public route
 app.post("/users", async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -135,8 +189,16 @@ app.post("/users", async (req, res) => {
   }
 });
 
-app.get("/users/:id", async (req, res) => {
+// Get user by ID - protected route
+app.get("/users/:id", authenticateToken, async (req, res) => {
   const userId = req.params.id; // Get user ID from URL
+
+  // Ensure users can only access their own information
+  if (req.user.userId !== parseInt(userId)) {
+    return res.status(403).json({
+      error: "Unauthorized: Cannot access another user's information",
+    });
+  }
 
   try {
     const result = await db.query(
@@ -155,8 +217,17 @@ app.get("/users/:id", async (req, res) => {
   }
 });
 
-app.put("/users/:id", async (req, res) => {
+// Update user - protected route
+app.put("/users/:id", authenticateToken, async (req, res) => {
   const userId = req.params.id;
+
+  // Ensure users can only update their own information
+  if (req.user.userId !== parseInt(userId)) {
+    return res.status(403).json({
+      error: "Unauthorized: Cannot update another user's information",
+    });
+  }
+
   const { name, email } = req.body;
 
   if (!name && !email) {
@@ -199,6 +270,7 @@ app.put("/users/:id", async (req, res) => {
   }
 });
 
+// Delete user - protected route
 app.delete("/users/:id", authenticateToken, async (req, res) => {
   const userId = parseInt(req.params.id, 10);
 
@@ -220,7 +292,8 @@ app.delete("/users/:id", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/items", async (req, res) => {
+// Create bucket list item - protected route
+app.post("/items", authenticateToken, async (req, res) => {
   const { bucket_list_id, title, description, image_url, link_url } = req.body;
 
   // Validate required fields
@@ -231,14 +304,21 @@ app.post("/items", async (req, res) => {
   }
 
   try {
-    // Check if bucket_list_id exists
+    // Check if bucket_list_id exists and belongs to the current user
     const bucketListCheck = await db.query(
-      "SELECT id FROM bucket_lists WHERE id = $1",
+      "SELECT * FROM bucket_lists WHERE id = $1",
       [bucket_list_id]
     );
 
     if (bucketListCheck.rows.length === 0) {
       return res.status(404).json({ error: "Bucket list not found" });
+    }
+
+    // Verify ownership
+    if (bucketListCheck.rows[0].user_id !== req.user.userId) {
+      return res.status(403).json({
+        error: "Unauthorized: Cannot add items to another user's bucket list",
+      });
     }
 
     // Insert new item
@@ -262,23 +342,42 @@ app.post("/items", async (req, res) => {
   }
 });
 
-app.put("/items/:id", async (req, res) => {
+// Update bucket list item - protected route
+app.put("/items/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { title, description, image_url, link_url } = req.body;
 
   try {
-    const existingItem = await db.query("SELECT * FROM items WHERE id = $1", [
-      id,
-    ]);
-    if (existingItem.rows.length === 0) {
+    // First fetch the item to check bucket list ownership
+    const itemCheck = await db.query(
+      `
+      SELECT i.*, b.user_id 
+      FROM items i
+      JOIN bucket_lists b ON i.bucket_list_id = b.id
+      WHERE i.id = $1
+    `,
+      [id]
+    );
+
+    if (itemCheck.rows.length === 0) {
       return res.status(404).json({ error: "Item not found" });
     }
 
+    // Verify ownership through the bucket list
+    if (itemCheck.rows[0].user_id !== req.user.userId) {
+      return res.status(403).json({
+        error:
+          "Unauthorized: Cannot update items in another user's bucket list",
+      });
+    }
+
+    const existingItem = itemCheck.rows[0];
+
     // Use existing values if no new values are provided
-    const updatedTitle = title ?? existingItem.rows[0].title;
-    const updatedDescription = description ?? existingItem.rows[0].description;
-    const updatedImageUrl = image_url ?? existingItem.rows[0].image_url;
-    const updatedLinkUrl = link_url ?? existingItem.rows[0].link_url;
+    const updatedTitle = title ?? existingItem.title;
+    const updatedDescription = description ?? existingItem.description;
+    const updatedImageUrl = image_url ?? existingItem.image_url;
+    const updatedLinkUrl = link_url ?? existingItem.link_url;
 
     const result = await db.query(
       "UPDATE items SET title = $1, description = $2, image_url = $3, link_url = $4 WHERE id = $5 RETURNING *",
@@ -292,16 +391,39 @@ app.put("/items/:id", async (req, res) => {
   }
 });
 
-app.delete("/items/:id", async (req, res) => {
+// Delete bucket list item - protected route
+app.delete("/items/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
+
   try {
+    // First fetch the item to check bucket list ownership
+    const itemCheck = await db.query(
+      `
+      SELECT i.*, b.user_id 
+      FROM items i
+      JOIN bucket_lists b ON i.bucket_list_id = b.id
+      WHERE i.id = $1
+    `,
+      [id]
+    );
+
+    if (itemCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    // Verify ownership through the bucket list
+    if (itemCheck.rows[0].user_id !== req.user.userId) {
+      return res.status(403).json({
+        error:
+          "Unauthorized: Cannot delete items from another user's bucket list",
+      });
+    }
+
     const result = await db.query(
       "DELETE FROM items WHERE id = $1 RETURNING *",
       [id]
     );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Item not found" });
-    }
+
     res.json({ message: "Item deleted" });
   } catch (error) {
     console.error("Error deleting item:", error);
@@ -309,14 +431,12 @@ app.delete("/items/:id", async (req, res) => {
   }
 });
 
+// Public route to check if backend is running
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Backend is running!" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
-
+// Login route - public
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -354,9 +474,21 @@ app.post("/login", async (req, res) => {
     );
 
     // Step 4: Send the token in the response
-    res.status(200).json({ message: "Login successful", token });
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   } catch (error) {
     console.error("Error logging in user:", error);
     res.status(500).json({ error: "Failed to log in" });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
