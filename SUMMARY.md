@@ -77,7 +77,9 @@ bucket-list-app/
 └── README.md               # Project documentation
 ```
 
-## Future Enhancements
+## Future Improvements
+
+Feel free to help implement these features if you'd like! I'd love to have multiple contributors to this project.
 
 - Social sharing of bucket lists
 - User profile management

@@ -152,12 +152,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* {error && (
-          <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )} */}
-
         {error && (
           <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded mb-4">
             Apologies, something went wrong. Please try again in a few minutes
