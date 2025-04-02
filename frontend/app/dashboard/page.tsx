@@ -8,8 +8,8 @@ import Link from "next/link";
 
 // Updated to match the backend structure
 interface BucketList {
-  bucket_list_id: number;
-  user_id: number;
+  bucket_list_id: string;
+  user_id: string;
   bucket_list_title: string;
   bucket_list_description: string | null;
   bucket_list_created_at: string;
@@ -70,9 +70,9 @@ export default function Dashboard() {
 
     try {
       const token = getToken();
-      const userId = parseInt(localStorage.getItem("userId") || "0", 10);
+      const userId = localStorage.getItem("userId");
 
-      if (!token || userId === 0) {
+      if (!token || !userId) {
         throw new Error("Authentication required");
       }
 
@@ -109,7 +109,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteList = async (id: number) => {
+  const handleDeleteList = async (id: string) => {
     if (!confirm("Are you sure you want to delete this bucket list?")) {
       return;
     }
