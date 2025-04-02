@@ -78,7 +78,7 @@ npm run install:all
 
 3. Set up environment variables:
 
-Create a `.env` file in the backend directory:
+Create a `.env` file in the backend directory with the following details:
 
 ```
 PORT=3001
@@ -107,13 +107,3 @@ This will start both the frontend and backend servers:
 2. Create a new bucket list from the dashboard
 3. Add items to your bucket list
 4. View, edit, or delete your bucket lists and items
-
-## Future Enhancements
-
-- Social features (sharing bucket lists with friends)
-- Collaborative bucket lists
-- Categories and tags for bucket lists
-- Search functionality
-- Image upload capability
-- Progress tracking for bucket list items
-- Email notifications for updates to shared bucket lists
