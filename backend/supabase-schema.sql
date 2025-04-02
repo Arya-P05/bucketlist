@@ -46,6 +46,10 @@ CREATE POLICY "Users can update their own data" ON users
 CREATE POLICY "Users can delete their own data" ON users
   FOR DELETE USING (auth.uid() = id);
 
+-- Add INSERT policy for users table
+CREATE POLICY "Allow public user registration" ON users
+  FOR INSERT WITH CHECK (true);
+
 -- Create policies for bucket_lists table
 CREATE POLICY "Users can view their own bucket lists" ON bucket_lists
   FOR SELECT USING (auth.uid() = user_id);
