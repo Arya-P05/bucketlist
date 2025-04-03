@@ -30,19 +30,6 @@ export default function Home() {
           <p className="text-xl mb-8 text-foreground/80">
             Create, share, and track your bucket list adventures!
           </p>
-
-          {/* <div className="bg-secondary/30 p-4 inline-block rounded">
-            <span className="text-foreground/80">Backend Status: </span>
-            <span
-              className={
-                backendStatus.includes("running")
-                  ? "text-green-500"
-                  : "text-danger"
-              }
-            >
-              {backendStatus}
-            </span>
-          </div> */}
         </section>
 
         <section className="grid md:grid-cols-3 gap-6 my-12">
