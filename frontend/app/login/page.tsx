@@ -42,21 +42,16 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const data = await response.json();
         throw new Error(data.error || "Login failed");
       }
 
-      // Save the token using our utility
-      setToken(data.token);
-
-      // Also save the user ID for future use
-      if (data.user && data.user.id) {
-        localStorage.setItem("userId", data.user.id.toString());
-      }
-
-      // Redirect to dashboard
+      const data = await response.json();
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userId", data.user.id);
+      // Always set remember me to true
+      localStorage.setItem("rememberMe", "true");
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Something went wrong");

@@ -34,28 +34,52 @@ export default function Dashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  useEffect(() => {
-    // Check if user is logged in
-    if (!isLoggedIn()) {
-      router.push("/login");
-      return;
-    }
-
-    // Fetch user's bucket lists
-    fetchBucketLists();
-  }, [router]);
-
   const fetchBucketLists = async () => {
     setIsLoading(true);
     setError("");
 
     try {
       const token = getToken();
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
       const response = await fetch("http://localhost:3001/bucket-lists", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        // Token is invalid or expired, try to refresh
+        try {
+          const refreshResponse = await fetch(
+            "http://localhost:3001/refresh-token",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (refreshResponse.ok) {
+            const data = await refreshResponse.json();
+            localStorage.setItem("token", data.token);
+            // Retry the original request
+            return fetchBucketLists();
+          } else {
+            throw new Error("Token refresh failed");
+          }
+        } catch (refreshError) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("userId");
+          localStorage.removeItem("rememberMe");
+          router.push("/login");
+          return;
+        }
+      }
 
       if (!response.ok) {
         throw new Error("Failed to fetch bucket lists");
@@ -65,11 +89,40 @@ export default function Dashboard() {
       setBucketLists(data);
     } catch (err: any) {
       console.error("Error fetching bucket lists:", err);
-      setError(err.message || "Something went wrong");
+      if (err.message === "Failed to fetch") {
+        setError("Unable to connect to the server. Please try again later.");
+      } else {
+        setError(err.message || "Something went wrong");
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!isLoggedIn()) {
+        router.push("/login");
+        return;
+      }
+
+      // Fetch bucket lists on mount and when router changes
+      await fetchBucketLists();
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // Add a periodic check for authentication
+  useEffect(() => {
+    const checkAuthInterval = setInterval(() => {
+      if (!isLoggedIn()) {
+        router.push("/login");
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(checkAuthInterval);
+  }, [router]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
