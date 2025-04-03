@@ -39,6 +39,8 @@ export default function BucketListDetail({
   const [newItemImageUrl, setNewItemImageUrl] = useState<string>("");
   const [newItemLinkUrl, setNewItemLinkUrl] = useState<string>("");
   const [formError, setFormError] = useState<boolean>(false);
+  const [imageUrlError, setImageUrlError] = useState<boolean>(false);
+  const [linkUrlError, setLinkUrlError] = useState<boolean>(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -83,19 +85,50 @@ export default function BucketListDetail({
     }
   };
 
+  const isValidUrl = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Reset all error states
+    setFormError(false);
+    setImageUrlError(false);
+    setLinkUrlError(false);
+
+    let hasError = false;
+
+    // Validate title
     if (!newItemTitle.trim()) {
       setFormError(true);
+      hasError = true;
+    }
+
+    // Validate image URL if provided
+    if (newItemImageUrl.trim() && !isValidUrl(newItemImageUrl)) {
+      setImageUrlError(true);
+      hasError = true;
+    }
+
+    // Validate link URL if provided
+    if (newItemLinkUrl.trim() && !isValidUrl(newItemLinkUrl)) {
+      setLinkUrlError(true);
+      hasError = true;
+    }
+
+    if (hasError) {
       return;
     }
 
     if (!bucketList) {
       return;
     }
-
-    setFormError(false);
 
     try {
       const newItem = {
@@ -246,7 +279,7 @@ export default function BucketListDetail({
             <div className="bg-card-bg border border-card-border text-card-fg rounded-lg p-6 w-full max-w-md dark:bg-black bg-white">
               <h2 className="text-xl font-semibold mb-4">Add New Item</h2>
 
-              <form onSubmit={handleAddItem} className="space-y-4">
+              <form onSubmit={handleAddItem} className="space-y-4" noValidate>
                 <div>
                   <label
                     htmlFor="title"
@@ -304,10 +337,24 @@ export default function BucketListDetail({
                     id="imageUrl"
                     type="url"
                     value={newItemImageUrl}
-                    onChange={(e) => setNewItemImageUrl(e.target.value)}
-                    className="dark:text-black w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    onChange={(e) => {
+                      setNewItemImageUrl(e.target.value);
+                      setImageUrlError(false);
+                    }}
+                    className={`dark:text-black w-full px-3 py-2 bg-input-bg border ${
+                      imageUrlError ? "border-red-500" : "border-input-border"
+                    } text-foreground rounded-md focus:outline-none focus:ring-2 ${
+                      imageUrlError
+                        ? "focus:ring-red-500"
+                        : "focus:ring-primary/70"
+                    }`}
                     placeholder="https://example.com/image.jpg"
                   />
+                  {imageUrlError && (
+                    <div className="text-red-500 text-sm mt-1">
+                      Enter a valid image URL.
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -321,10 +368,24 @@ export default function BucketListDetail({
                     id="linkUrl"
                     type="url"
                     value={newItemLinkUrl}
-                    onChange={(e) => setNewItemLinkUrl(e.target.value)}
-                    className="dark:text-black w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    onChange={(e) => {
+                      setNewItemLinkUrl(e.target.value);
+                      setLinkUrlError(false);
+                    }}
+                    className={`dark:text-black w-full px-3 py-2 bg-input-bg border ${
+                      linkUrlError ? "border-red-500" : "border-input-border"
+                    } text-foreground rounded-md focus:outline-none focus:ring-2 ${
+                      linkUrlError
+                        ? "focus:ring-red-500"
+                        : "focus:ring-primary/70"
+                    }`}
                     placeholder="https://example.com"
                   />
+                  {linkUrlError && (
+                    <div className="text-red-500 text-sm mt-1">
+                      Enter a valid URL.
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end space-x-2">
