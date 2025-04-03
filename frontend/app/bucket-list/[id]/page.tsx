@@ -30,14 +30,15 @@ export default function BucketListDetail({
 }) {
   const router = useRouter();
   const [bucketList, setBucketList] = useState<BucketList | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
 
-  const [showAddItemModal, setShowAddItemModal] = useState(false);
-  const [newItemTitle, setNewItemTitle] = useState("");
-  const [newItemDescription, setNewItemDescription] = useState("");
-  const [newItemImageUrl, setNewItemImageUrl] = useState("");
-  const [newItemLinkUrl, setNewItemLinkUrl] = useState("");
+  const [showAddItemModal, setShowAddItemModal] = useState<boolean>(false);
+  const [newItemTitle, setNewItemTitle] = useState<string>("");
+  const [newItemDescription, setNewItemDescription] = useState<string>("");
+  const [newItemImageUrl, setNewItemImageUrl] = useState<string>("");
+  const [newItemLinkUrl, setNewItemLinkUrl] = useState<string>("");
+  const [formError, setFormError] = useState<string>("");
 
   useEffect(() => {
     // Check if user is logged in
