@@ -5,14 +5,31 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const authenticateToken = require("./tokenAuth");
+const { supabase } = require("./db");
+const { uploadImage } = require("./utils/storage");
+const multer = require("multer");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed!"));
+    }
+  },
+});
+
 app.use(cors());
 app.use(express.json());
-
-const { supabase } = require("./db");
 
 // Public route - get all bucket lists (will be limited to user's lists after auth)
 app.get("/bucket-lists", authenticateToken, async (req, res) => {
@@ -29,6 +46,8 @@ app.get("/bucket-lists", authenticateToken, async (req, res) => {
 
     if (bucketListsError) throw bucketListsError;
 
+    console.log("Raw bucket lists from database:", bucketLists);
+
     // For each bucket list, fetch its items
     const bucketListsWithItems = await Promise.all(
       bucketLists.map(async (list) => {
@@ -39,14 +58,18 @@ app.get("/bucket-lists", authenticateToken, async (req, res) => {
 
         if (itemsError) throw itemsError;
 
-        return {
+        const bucketListWithItems = {
           bucket_list_id: list.id,
           user_id: list.user_id,
           bucket_list_title: list.title,
           bucket_list_description: list.description,
           bucket_list_created_at: list.created_at,
+          cover_image: list.cover_image,
           items: items || [],
         };
+
+        console.log("Processed bucket list:", bucketListWithItems);
+        return bucketListWithItems;
       })
     );
 
@@ -58,48 +81,61 @@ app.get("/bucket-lists", authenticateToken, async (req, res) => {
 });
 
 // Create bucket list - protected route
-app.post("/bucket-lists", authenticateToken, async (req, res) => {
-  const { user_id, title, description } = req.body;
+app.post(
+  "/bucket-lists",
+  authenticateToken,
+  upload.single("cover_image"),
+  async (req, res) => {
+    const { user_id, title, description } = req.body;
+    const cover_image = req.file;
 
-  // Validate the request body
-  if (!title || !user_id) {
-    return res.status(400).json({ error: "Title and user_id are required" });
+    // Validate the request body
+    if (!title || !user_id || !cover_image) {
+      return res
+        .status(400)
+        .json({ error: "Title, user_id, and cover_image are required" });
+    }
+
+    // Ensure user can only create bucket lists for themselves
+    if (String(req.user.userId) !== String(user_id)) {
+      console.log("User ID mismatch:", {
+        tokenUserId: req.user.userId,
+        requestUserId: user_id,
+        tokenUserIdType: typeof req.user.userId,
+        requestUserIdType: typeof user_id,
+      });
+      return res.status(403).json({
+        error: "Unauthorized: Cannot create bucket list for another user",
+      });
+    }
+
+    try {
+      // Upload the cover image to Supabase Storage
+      const coverImageUrl = await uploadImage(cover_image);
+
+      const { data, error } = await supabase
+        .from("bucket_lists")
+        .insert([
+          {
+            user_id,
+            title,
+            description: description || null,
+            cover_image: coverImageUrl,
+          },
+        ])
+        .select();
+
+      if (error) throw error;
+
+      res.status(201).json(data[0]);
+    } catch (error) {
+      console.error("Error creating bucket list:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to create bucket list" });
+    }
   }
-
-  // Ensure user can only create bucket lists for themselves
-  // Convert both to strings for comparison to handle type mismatches
-  if (String(req.user.userId) !== String(user_id)) {
-    console.log("User ID mismatch:", {
-      tokenUserId: req.user.userId,
-      requestUserId: user_id,
-      tokenUserIdType: typeof req.user.userId,
-      requestUserIdType: typeof user_id,
-    });
-    return res.status(403).json({
-      error: "Unauthorized: Cannot create bucket list for another user",
-    });
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("bucket_lists")
-      .insert([
-        {
-          user_id,
-          title,
-          description: description || null,
-        },
-      ])
-      .select();
-
-    if (error) throw error;
-
-    res.status(201).json(data[0]);
-  } catch (error) {
-    console.error("Error creating bucket list:", error);
-    res.status(500).json({ error: "Failed to create bucket list" });
-  }
-});
+);
 
 // Update bucket list - protected route
 app.put("/bucket-lists/:id", authenticateToken, async (req, res) => {

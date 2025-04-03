@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import { isLoggedIn, getToken } from "../utils/auth";
 import Link from "next/link";
+import FocusCardsDemo from "@/components/focus-cards-demo";
+import Image from "next/image";
 
 // Updated to match the backend structure
 interface BucketList {
@@ -13,6 +15,7 @@ interface BucketList {
   bucket_list_title: string;
   bucket_list_description: string | null;
   bucket_list_created_at: string;
+  cover_image: string | null;
   items: any[] | null;
 }
 
@@ -23,8 +26,11 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [newListTitle, setNewListTitle] = useState("");
   const [newListDescription, setNewListDescription] = useState("");
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -63,6 +69,18 @@ export default function Dashboard() {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCoverImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateList = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -76,17 +94,22 @@ export default function Dashboard() {
         throw new Error("Authentication required");
       }
 
+      if (!coverImage) {
+        throw new Error("Please select a cover image for your bucket list");
+      }
+
+      const formData = new FormData();
+      formData.append("user_id", userId);
+      formData.append("title", newListTitle);
+      formData.append("description", newListDescription || "");
+      formData.append("cover_image", coverImage);
+
       const response = await fetch("http://localhost:3001/bucket-lists", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          user_id: userId,
-          title: newListTitle,
-          description: newListDescription || null,
-        }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -100,6 +123,8 @@ export default function Dashboard() {
       // Reset form
       setNewListTitle("");
       setNewListDescription("");
+      setCoverImage(null);
+      setPreviewUrl(null);
       setShowCreateForm(false);
     } catch (err: any) {
       setError(err.message || "Something went wrong");
@@ -198,6 +223,49 @@ export default function Dashboard() {
                   placeholder="What's this bucket list about?"
                 ></textarea>
               </div>
+              <div>
+                <label
+                  htmlFor="cover_image"
+                  className="block text-sm font-medium text-card-fg mb-1"
+                >
+                  Cover Image <span className="text-danger">*</span>
+                </label>
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="file"
+                    id="cover_image"
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    className="hidden"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-secondary hover:bg-secondary-hover text-secondary-fg px-4 py-2 rounded-md"
+                  >
+                    Choose Image
+                  </button>
+                  {previewUrl ? (
+                    <div className="relative w-20 h-20">
+                      <Image
+                        src={previewUrl}
+                        alt="Preview"
+                        fill
+                        className="object-cover rounded-md"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted">No image selected</p>
+                  )}
+                </div>
+                {!coverImage && (
+                  <p className="text-sm text-danger mt-1">
+                    Please select a cover image
+                  </p>
+                )}
+              </div>
               <div className="flex justify-end">
                 <button
                   type="submit"
@@ -227,73 +295,7 @@ export default function Dashboard() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bucketLists.map((list) => (
-              <div
-                key={list.bucket_list_id}
-                className="bg-card-bg border border-card-border text-card-fg rounded-lg shadow overflow-hidden flex flex-col"
-              >
-                <div className="p-4 flex-1">
-                  <h2 className="text-xl font-semibold mb-2">
-                    {list.bucket_list_title}
-                  </h2>
-                  <p className="text-muted mb-4">
-                    {list.bucket_list_description || "No description provided"}
-                  </p>
-                  <p className="text-xs text-muted">
-                    Created:{" "}
-                    {new Date(list.bucket_list_created_at).toLocaleDateString(
-                      "en-US",
-                      {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      }
-                    )}
-                  </p>
-                  {list.items && Array.isArray(list.items) && (
-                    <p className="text-xs text-muted mt-2">
-                      {list.items.some(
-                        (item) =>
-                          item !== null &&
-                          typeof item === "object" &&
-                          (item.title ||
-                            item.description ||
-                            item.image_url ||
-                            item.link_url)
-                      )
-                        ? `${
-                            list.items.filter(
-                              (item) =>
-                                item !== null &&
-                                typeof item === "object" &&
-                                (item.title ||
-                                  item.description ||
-                                  item.image_url ||
-                                  item.link_url)
-                            ).length
-                          } items`
-                        : "No items yet"}
-                    </p>
-                  )}
-                </div>
-                <div className="p-4 bg-card-bg border-t border-card-border flex justify-between">
-                  <Link
-                    href={`/bucket-list/${list.bucket_list_id}`}
-                    className="text-primary hover:underline"
-                  >
-                    View Details
-                  </Link>
-                  <button
-                    onClick={() => handleDeleteList(list.bucket_list_id)}
-                    className="text-danger hover:underline"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <FocusCardsDemo />
         )}
       </div>
     </main>

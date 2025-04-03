@@ -33,10 +33,6 @@ export default function Navbar() {
 
         <div className="flex items-center space-x-6">
           <div className="space-x-4">
-            <Link href="/" className="hover:text-primary-fg/80">
-              Home
-            </Link>
-
             {loggedIn ? (
               <>
                 <Link href="/dashboard" className="hover:text-primary-fg/80">
@@ -53,9 +49,6 @@ export default function Navbar() {
               <>
                 <Link href="/login" className="hover:text-primary-fg/80">
                   Login
-                </Link>
-                <Link href="/signup" className="hover:text-primary-fg/80">
-                  Sign Up
                 </Link>
               </>
             )}
