@@ -12,50 +12,34 @@ const jwt = require("jsonwebtoken");
  * - Access the authenticated user in your route handlers:
  *   const userId = req.user.userId;
  */
-function authenticateToken(req, res, next) {
-  try {
-    // Get the authorization header
-    const authHeader = req.headers["authorization"];
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
-    // Check if authorization header exists and has the right format
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        error: "Access denied. Authorization header missing or invalid format.",
-      });
-    }
-
-    // Extract token from "Bearer <token>"
-    const token = authHeader.split(" ")[1];
-
-    if (!token) {
-      return res
-        .status(401)
-        .json({ error: "Access denied. No token provided." });
-    }
-
-    // Verify the token
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-      if (err) {
-        if (err.name === "TokenExpiredError") {
-          return res
-            .status(403)
-            .json({ error: "Token expired. Please log in again." });
-        }
-        return res.status(403).json({ error: "Invalid token." });
-      }
-
-      // Attach user info to request
-      req.user = decoded;
-
-      // Continue to the next middleware or route
-      next();
-    });
-  } catch (error) {
-    console.error("Token authentication error:", error);
-    return res
-      .status(500)
-      .json({ error: "Authentication failed due to server error." });
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
   }
-}
 
-module.exports = authenticateToken;
+  try {
+    // Try to verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    // If token is expired, we'll handle it in the refresh endpoint
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Token expired" });
+    }
+    return res.status(403).json({ error: "Invalid token" });
+  }
+};
+
+const generateToken = (userId) => {
+  // Generate a token that expires in 7 days for longer sessions
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+};
+
+module.exports = {
+  authenticateToken,
+  generateToken,
+};

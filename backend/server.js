@@ -4,7 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const authenticateToken = require("./tokenAuth");
+const { authenticateToken, generateToken } = require("./tokenAuth");
 const { supabase } = require("./db");
 const { uploadImage } = require("./utils/storage");
 const multer = require("multer");
@@ -516,14 +516,9 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "Backend is running!" });
 });
 
-// Login route - public
+// Login route
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-
-  // Basic validation: Check if email and password are provided
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
-  }
 
   try {
     // Step 1: Check if the user exists in the database
@@ -549,16 +544,10 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Step 3: Generate a JWT token for the user
-    const token = jwt.sign(
-      { userId: user.id }, // Payload (we store the user id in the token)
-      process.env.JWT_SECRET, // Secret key (use environment variable to keep it secure)
-      { expiresIn: "1h" } // Token expiration time (optional, here it's 1 hour)
-    );
+    // Generate token using the new function
+    const token = generateToken(user.id);
 
-    // Step 4: Send the token in the response
-    res.status(200).json({
-      message: "Login successful",
+    res.json({
       token,
       user: {
         id: user.id,
@@ -567,8 +556,33 @@ app.post("/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error logging in user:", error);
-    res.status(500).json({ error: "Failed to log in" });
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
+// Refresh token endpoint
+app.post("/refresh-token", async (req, res) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  try {
+    // Verify the token, but ignore expiration
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      ignoreExpiration: true,
+    });
+
+    // Generate a new token
+    const newToken = generateToken(decoded.userId);
+
+    res.json({ token: newToken });
+  } catch (err) {
+    console.error("Token refresh error:", err);
+    return res.status(403).json({ error: "Invalid token" });
   }
 });
 
