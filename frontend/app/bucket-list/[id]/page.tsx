@@ -38,7 +38,7 @@ export default function BucketListDetail({
   const [newItemDescription, setNewItemDescription] = useState<string>("");
   const [newItemImageUrl, setNewItemImageUrl] = useState<string>("");
   const [newItemLinkUrl, setNewItemLinkUrl] = useState<string>("");
-  const [formError, setFormError] = useState<string>("");
+  const [formError, setFormError] = useState<boolean>(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -86,9 +86,16 @@ export default function BucketListDetail({
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newItemTitle.trim() || !bucketList) {
+    if (!newItemTitle.trim()) {
+      setFormError(true);
       return;
     }
+
+    if (!bucketList) {
+      return;
+    }
+
+    setFormError(false);
 
     try {
       const newItem = {
@@ -251,11 +258,22 @@ export default function BucketListDetail({
                     id="title"
                     type="text"
                     value={newItemTitle}
-                    onChange={(e) => setNewItemTitle(e.target.value)}
-                    className="dark:text-black w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    onChange={(e) => {
+                      setNewItemTitle(e.target.value);
+                      setFormError(false);
+                    }}
+                    className={`dark:text-black w-full px-3 py-2 bg-input-bg border ${
+                      formError ? "border-red-500" : "border-input-border"
+                    } text-foreground rounded-md focus:outline-none focus:ring-2 ${
+                      formError ? "focus:ring-red-500" : "focus:ring-primary/70"
+                    }`}
                     placeholder="Enter a title for your item"
-                    required
                   />
+                  {formError && (
+                    <div className="text-red-500 text-sm mt-1">
+                      Please fill in all fields
+                    </div>
+                  )}
                 </div>
 
                 <div>
