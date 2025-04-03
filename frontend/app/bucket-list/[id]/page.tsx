@@ -196,29 +196,10 @@ export default function BucketListDetail({
 
       <div className="flex-1 container mx-auto px-4 py-8">
         <div className="mb-6">
-          <div className="flex items-center mb-2">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="text-primary hover:underline flex items-center mr-4"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-1"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Back to Dashboard
-            </button>
-            <h1 className="text-2xl font-bold text-foreground flex-1">
-              {bucketList.bucket_list_title}
-            </h1>
-          </div>
+          <h1 className="text-2xl font-bold text-foreground flex-1 mb-2">
+            {bucketList.bucket_list_title}
+          </h1>
+
           <p className="text-muted mb-2">
             {bucketList.bucket_list_description || "No description provided"}
           </p>
