@@ -234,8 +234,8 @@ export default function BucketListDetail({
 
         {/* Add Item Modal */}
         {showAddItemModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-card-bg border border-card-border text-card-fg rounded-lg p-6 w-full max-w-md">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 ">
+            <div className="bg-card-bg border border-card-border text-card-fg rounded-lg p-6 w-full max-w-md dark:bg-black bg-white">
               <h2 className="text-xl font-semibold mb-4">Add New Item</h2>
 
               <form onSubmit={handleAddItem} className="space-y-4">
@@ -251,7 +251,7 @@ export default function BucketListDetail({
                     type="text"
                     value={newItemTitle}
                     onChange={(e) => setNewItemTitle(e.target.value)}
-                    className="w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    className="dark:text-black w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
                     placeholder="Enter a title for your item"
                     required
                   />
@@ -268,7 +268,7 @@ export default function BucketListDetail({
                     id="description"
                     value={newItemDescription}
                     onChange={(e) => setNewItemDescription(e.target.value)}
-                    className="w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    className="dark:text-black w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
                     placeholder="Enter a description"
                     rows={3}
                   />
@@ -286,7 +286,7 @@ export default function BucketListDetail({
                     type="url"
                     value={newItemImageUrl}
                     onChange={(e) => setNewItemImageUrl(e.target.value)}
-                    className="w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    className="dark:text-black w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
                     placeholder="https://example.com/image.jpg"
                   />
                 </div>
@@ -303,7 +303,7 @@ export default function BucketListDetail({
                     type="url"
                     value={newItemLinkUrl}
                     onChange={(e) => setNewItemLinkUrl(e.target.value)}
-                    className="w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
+                    className="dark:text-black w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
                     placeholder="https://example.com"
                   />
                 </div>
