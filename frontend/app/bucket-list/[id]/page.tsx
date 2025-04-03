@@ -34,6 +34,8 @@ export default function BucketListDetail({
   const [error, setError] = useState<string>("");
 
   const [showAddItemModal, setShowAddItemModal] = useState<boolean>(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [newItemTitle, setNewItemTitle] = useState<string>("");
   const [newItemDescription, setNewItemDescription] = useState<string>("");
   const [newItemImageUrl, setNewItemImageUrl] = useState<string>("");
@@ -168,17 +170,23 @@ export default function BucketListDetail({
   };
 
   const handleDeleteItem = async (itemId: string) => {
-    if (!confirm("Are you sure you want to delete this item?")) {
-      return;
-    }
+    setItemToDelete(itemId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/items/${itemId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const response = await fetch(
+        `http://localhost:3001/items/${itemToDelete}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to delete item");
@@ -189,6 +197,9 @@ export default function BucketListDetail({
     } catch (err) {
       console.error("Error deleting item:", err);
       setError("Failed to delete item");
+    } finally {
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     }
   };
 
@@ -272,6 +283,36 @@ export default function BucketListDetail({
             Add New Item
           </button>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-card-bg border border-card-border text-card-fg rounded-lg p-6 w-full max-w-md dark:bg-black bg-white">
+              <h2 className="text-xl font-semibold mb-4">Delete Item</h2>
+              <p className="text-muted mb-6">
+                Are you sure you want to delete this item? This action cannot be
+                undone.
+              </p>
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setItemToDelete(null);
+                  }}
+                  className="px-4 py-2 bg-secondary hover:bg-secondary-hover text-secondary-fg rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 bg-danger hover:bg-danger-hover text-danger-fg rounded-md"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Add Item Modal */}
         {showAddItemModal && (
