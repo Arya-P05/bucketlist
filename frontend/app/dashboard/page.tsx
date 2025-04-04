@@ -4,9 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import { isLoggedIn, getToken } from "../utils/auth";
-import Link from "next/link";
 import FocusCardsDemo from "@/components/focus-cards-demo";
-import Image from "next/image";
 
 // Updated to match the backend structure
 interface BucketList {
@@ -169,6 +167,12 @@ export default function Dashboard() {
 
     if (!coverImage) {
       setShowImageError(true);
+      setIsCreating(false);
+      return;
+    }
+
+    if (titleError) {
+      setTitleError(true);
       setIsCreating(false);
       return;
     }
