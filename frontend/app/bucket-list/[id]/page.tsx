@@ -40,7 +40,7 @@ export default function BucketListDetail({
   const [newItemDescription, setNewItemDescription] = useState<string>("");
   const [newItemImageUrl, setNewItemImageUrl] = useState<string>("");
   const [newItemLinkUrl, setNewItemLinkUrl] = useState<string>("");
-  const [formError, setFormError] = useState<boolean>(false);
+  const [titleError, settitleError] = useState<boolean>(false);
   const [imageUrlError, setImageUrlError] = useState<boolean>(false);
   const [linkUrlError, setLinkUrlError] = useState<boolean>(false);
 
@@ -100,7 +100,7 @@ export default function BucketListDetail({
     e.preventDefault();
 
     // Reset all error states
-    setFormError(false);
+    settitleError(false);
     setImageUrlError(false);
     setLinkUrlError(false);
 
@@ -108,7 +108,7 @@ export default function BucketListDetail({
 
     // Validate title
     if (!newItemTitle.trim()) {
-      setFormError(true);
+      settitleError(true);
       hasError = true;
     }
 
@@ -334,16 +334,18 @@ export default function BucketListDetail({
                     value={newItemTitle}
                     onChange={(e) => {
                       setNewItemTitle(e.target.value);
-                      setFormError(false);
+                      settitleError(false);
                     }}
                     className={`dark:text-black w-full px-3 py-2 bg-input-bg border ${
-                      formError ? "border-red-500" : "border-input-border"
+                      titleError ? "border-red-500" : "border-input-border"
                     } text-foreground rounded-md focus:outline-none focus:ring-2 ${
-                      formError ? "focus:ring-red-500" : "focus:ring-primary/70"
+                      titleError
+                        ? "focus:ring-red-500"
+                        : "focus:ring-primary/70"
                     }`}
                     placeholder="Enter a title for your item"
                   />
-                  {formError && (
+                  {titleError && (
                     <div className="text-red-500 text-sm mt-1">
                       Please fill in all fields
                     </div>
@@ -353,9 +355,9 @@ export default function BucketListDetail({
                 <div>
                   <label
                     htmlFor="description"
-                    className="block text-sm font-medium text-card-fg mb-1"
+                    className="block text-sm text-card-fg mb-1"
                   >
-                    Description (optional)
+                    <span className="font-medium">Description</span> (optional)
                   </label>
                   <textarea
                     id="description"
@@ -370,9 +372,9 @@ export default function BucketListDetail({
                 <div>
                   <label
                     htmlFor="imageUrl"
-                    className="block text-sm font-medium text-card-fg mb-1"
+                    className="block text-sm text-card-fg mb-1"
                   >
-                    Image URL (optional)
+                    <span className="font-medium">Image URL</span> (optional)
                   </label>
                   <input
                     id="imageUrl"
@@ -401,9 +403,9 @@ export default function BucketListDetail({
                 <div>
                   <label
                     htmlFor="linkUrl"
-                    className="block text-sm font-medium text-card-fg mb-1"
+                    className="block text-sm text-card-fg mb-1"
                   >
-                    Related Link (optional)
+                    <span className="font-medium">Related Link</span> (optional)
                   </label>
                   <input
                     id="linkUrl"

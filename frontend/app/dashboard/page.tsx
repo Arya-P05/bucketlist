@@ -311,9 +311,9 @@ export default function Dashboard() {
               <div>
                 <label
                   htmlFor="description"
-                  className="block text-sm font-medium text-card-fg mb-1"
+                  className="block text-sm text-card-fg mb-1"
                 >
-                  Description (optional)
+                  <span className="font-medium">Description</span> (optional)
                 </label>
                 <textarea
                   id="description"
@@ -327,9 +327,10 @@ export default function Dashboard() {
               <div>
                 <label
                   htmlFor="cover_image"
-                  className="block text-sm font-medium text-card-fg mb-1"
+                  className="block text-sm text-card-fg mb-1"
                 >
-                  Cover Image <span className="text-danger">*</span>
+                  <span className="font-medium">Cover Image</span> (less than
+                  5MB)
                 </label>
                 <div
                   className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
