@@ -33,6 +33,8 @@ export default function Dashboard() {
   const [showImageError, setShowImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [titleError, setTitleError] = useState<boolean>(false);
+  const [descriptionError, setDescriptionError] = useState<boolean>(false);
 
   const fetchBucketLists = async () => {
     setIsLoading(true);
@@ -293,7 +295,7 @@ export default function Dashboard() {
                   htmlFor="description"
                   className="block text-sm font-medium text-card-fg mb-1"
                 >
-                  Description
+                  Description (optional)
                 </label>
                 <textarea
                   id="description"
