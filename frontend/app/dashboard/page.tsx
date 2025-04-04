@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showImageError, setShowImageError] = useState(false);
   const [imageSizeError, setImageSizeError] = useState(false);
+  const [imageFormatError, setImageFormatError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [titleError, setTitleError] = useState<boolean>(false);
@@ -145,6 +146,24 @@ export default function Dashboard() {
   };
 
   const handleImageFile = (file: File) => {
+    // Check if file is a valid image format
+    const validImageTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "image/svg+xml",
+    ];
+    if (!validImageTypes.includes(file.type)) {
+      setError(
+        "Please upload a valid image file (JPEG, PNG, GIF, WebP, or SVG)."
+      );
+      setImageFormatError(true);
+      setCoverImage(null);
+      setPreviewUrl(null);
+      return;
+    }
+
     // Check if file size exceeds 5MB (5 * 1024 * 1024 bytes)
     if (file.size > 5 * 1024 * 1024) {
       setError("Image size exceeds 5MB limit. Please choose a smaller image.");
@@ -157,6 +176,7 @@ export default function Dashboard() {
     setCoverImage(file);
     setShowImageError(false);
     setImageSizeError(false);
+    setImageFormatError(false);
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewUrl(reader.result as string);
@@ -177,21 +197,37 @@ export default function Dashboard() {
     setIsCreating(true);
     setTitleError(false);
     setImageSizeError(false);
+    setImageFormatError(false);
 
-    // Validate image size before submission
-    if (coverImage && coverImage.size > 5 * 1024 * 1024) {
-      setError("Image size exceeds 5MB limit. Please choose a smaller image.");
-      setImageSizeError(true);
-      setCoverImage(null);
-      setPreviewUrl(null);
-      setIsCreating(false);
-      return;
-    }
+    // Validate image format before submission
+    if (coverImage) {
+      const validImageTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/svg+xml",
+      ];
+      if (!validImageTypes.includes(coverImage.type)) {
+        setError(
+          "Please upload a valid image file (JPEG, PNG, GIF, WebP, or SVG)."
+        );
+        setImageFormatError(true);
+        setIsCreating(false);
+        return;
+      }
 
-    if (!coverImage) {
-      setShowImageError(true);
-      setIsCreating(false);
-      return;
+      // Validate image size before submission
+      if (coverImage.size > 5 * 1024 * 1024) {
+        setError(
+          "Image size exceeds 5MB limit. Please choose a smaller image."
+        );
+        setImageSizeError(true);
+        setCoverImage(null);
+        setPreviewUrl(null);
+        setIsCreating(false);
+        return;
+      }
     }
 
     if (!newListTitle.trim()) {
@@ -358,7 +394,7 @@ export default function Dashboard() {
                   className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                     showImageError
                       ? "border-red-500"
-                      : imageSizeError
+                      : imageSizeError || imageFormatError
                       ? "border-red-500"
                       : isDragging
                       ? "border-primary bg-primary/5"
@@ -373,7 +409,7 @@ export default function Dashboard() {
                     id="cover_image"
                     ref={fileInputRef}
                     onChange={handleImageChange}
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
                     className="hidden"
                   />
                   {previewUrl ? (
@@ -441,6 +477,12 @@ export default function Dashboard() {
                 {imageSizeError && (
                   <div className="text-red-500 text-sm mt-1">
                     Image size exceeds 5MB limit. Please choose a smaller image.
+                  </div>
+                )}
+                {imageFormatError && (
+                  <div className="text-red-500 text-sm mt-1">
+                    Please upload a valid image file (JPEG, PNG, GIF, WebP, or
+                    SVG).
                   </div>
                 )}
               </div>
