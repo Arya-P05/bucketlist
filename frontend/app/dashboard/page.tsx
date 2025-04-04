@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showImageError, setShowImageError] = useState(false);
+  const [imageSizeError, setImageSizeError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [titleError, setTitleError] = useState<boolean>(false);
@@ -144,8 +145,18 @@ export default function Dashboard() {
   };
 
   const handleImageFile = (file: File) => {
+    // Check if file size exceeds 5MB (5 * 1024 * 1024 bytes)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size exceeds 5MB limit. Please choose a smaller image.");
+      setImageSizeError(true);
+      setCoverImage(null);
+      setPreviewUrl(null);
+      return;
+    }
+
     setCoverImage(file);
     setShowImageError(false);
+    setImageSizeError(false);
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewUrl(reader.result as string);
@@ -165,18 +176,27 @@ export default function Dashboard() {
     setError("");
     setIsCreating(true);
     setTitleError(false);
+    setImageSizeError(false);
+
+    // Validate image size before submission
+    if (coverImage && coverImage.size > 5 * 1024 * 1024) {
+      setError("Image size exceeds 5MB limit. Please choose a smaller image.");
+      setImageSizeError(true);
+      setCoverImage(null);
+      setPreviewUrl(null);
+      setIsCreating(false);
+      return;
+    }
 
     if (!coverImage) {
       setShowImageError(true);
       setIsCreating(false);
+      return;
     }
 
     if (!newListTitle.trim()) {
       setTitleError(true);
       setIsCreating(false);
-    }
-
-    if (!isCreating) {
       return;
     }
 
@@ -267,12 +287,14 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {error && (
-          <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded mb-4">
-            Apologies, something went wrong. Please try again in a few minutes
-            or contact support. Thank you for understanding.
-          </div>
-        )}
+        {error &&
+          error !==
+            "Image size exceeds 5MB limit. Please choose a smaller image." && (
+            <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded mb-4">
+              Apologies, something went wrong. Please try again in a few minutes
+              or contact support. Thank you for understanding.
+            </div>
+          )}
 
         {showCreateForm && (
           <div className="bg-card-bg border border-card-border text-card-fg rounded-lg p-4 mb-6">
@@ -335,6 +357,8 @@ export default function Dashboard() {
                 <div
                   className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                     showImageError
+                      ? "border-red-500"
+                      : imageSizeError
                       ? "border-red-500"
                       : isDragging
                       ? "border-primary bg-primary/5"
@@ -412,6 +436,11 @@ export default function Dashboard() {
                 {showImageError && (
                   <div className="text-red-500 text-sm mt-1">
                     Please select a cover image
+                  </div>
+                )}
+                {imageSizeError && (
+                  <div className="text-red-500 text-sm mt-1">
+                    Image size exceeds 5MB limit. Please choose a smaller image.
                   </div>
                 )}
               </div>
