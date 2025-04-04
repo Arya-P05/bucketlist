@@ -164,16 +164,19 @@ export default function Dashboard() {
     e.preventDefault();
     setError("");
     setIsCreating(true);
+    setTitleError(false);
 
     if (!coverImage) {
       setShowImageError(true);
       setIsCreating(false);
-      return;
     }
 
-    if (titleError) {
+    if (!newListTitle.trim()) {
       setTitleError(true);
       setIsCreating(false);
+    }
+
+    if (!isCreating) {
       return;
     }
 
@@ -189,7 +192,7 @@ export default function Dashboard() {
       formData.append("user_id", userId);
       formData.append("title", newListTitle);
       formData.append("description", newListDescription || "");
-      formData.append("cover_image", coverImage);
+      formData.append("cover_image", coverImage || "");
 
       const response = await fetch("http://localhost:3001/bucket-lists", {
         method: "POST",
@@ -288,11 +291,22 @@ export default function Dashboard() {
                   id="title"
                   type="text"
                   value={newListTitle}
-                  onChange={(e) => setNewListTitle(e.target.value)}
-                  className=" dark:text-black w-full px-3 py-2 bg-input-bg border border-input-border text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary/70"
-                  placeholder="My Bucket List"
-                  required
+                  onChange={(e) => {
+                    setNewListTitle(e.target.value);
+                    setTitleError(false);
+                  }}
+                  className={`dark:text-black w-full px-3 py-2 bg-input-bg border ${
+                    titleError ? "border-red-500" : "border-input-border"
+                  } text-foreground rounded-md focus:outline-none focus:ring-2 ${
+                    titleError ? "focus:ring-red-500" : "focus:ring-primary/70"
+                  }`}
+                  placeholder="Travel Bucket List"
                 />
+                {titleError && (
+                  <div className="text-red-500 text-sm mt-1">
+                    Please fill in all fields
+                  </div>
+                )}
               </div>
               <div>
                 <label
